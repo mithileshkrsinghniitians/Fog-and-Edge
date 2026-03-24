@@ -12,6 +12,12 @@
 # AWS IoT TLS certificates (private keys must never be in git)
 certs/
 
+# Infrastructure provisioning script (contains no secrets but is local-only)
+backend/infra/deploy.sh
+
+# Lambda deployment ZIPs (built locally, not source code)
+backend/lambda/*.zip
+
 # -------------------------------------------------------------
 # Python
 # -------------------------------------------------------------
