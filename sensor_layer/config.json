@@ -1,0 +1,54 @@
+{
+  "simulation": {
+    "num_homes": 3,
+    "dispatch_rate_seconds": 5,
+    "anomaly_probability": 0.05
+  },
+
+  "homes": [
+    { "home_id": "home_1", "location": "Dublin North" },
+    { "home_id": "home_2", "location": "Dublin South" },
+    { "home_id": "home_3", "location": "Dublin West" }
+  ],
+
+  "sensor_types": [
+    "solar_panel",
+    "grid_import",
+    "battery_storage",
+    "ev_charger",
+    "temperature"
+  ],
+
+  "baseline_values": {
+    "solar_panel": {
+      "unit": "kW",
+      "peak_output": 4.5,
+      "note": "Output varies by time of day — peaks around midday, zero at night"
+    },
+    "grid_import": {
+      "unit": "kW",
+      "note": "Varies by time — higher in morning/evening, lower overnight",
+      "morning_peak": 3.2,
+      "evening_peak": 4.1,
+      "overnight_base": 0.8
+    },
+    "battery_storage": {
+      "unit": "percent",
+      "starting_charge": 50,
+      "min": 0,
+      "max": 100,
+      "note": "Starts at 50% charge. Charges when solar is high, discharges when demand is high."
+    },
+    "ev_charger": {
+      "unit": "kW",
+      "charging_rate": 7.4,
+      "note": "Either on (7.4kW) or off (0kW). Typically active in evenings."
+    },
+    "temperature": {
+      "unit": "celsius",
+      "baseline": 20,
+      "variation": 5,
+      "note": "Ambient temperature around 20C with some variation throughout the day"
+    }
+  }
+}

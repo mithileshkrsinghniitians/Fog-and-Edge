@@ -1,0 +1,27 @@
+# .dockerignore
+# Works like .gitignore but for Docker — tells Docker what NOT to copy
+# into the build context when building the image.
+# Keeping the build context small makes builds faster and images cleaner.
+
+# Python cache files — these get regenerated automatically, no need to copy them
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# The .env file contains secrets (AWS keys etc.) — never bake these into an image.
+# Environment variables are passed in at runtime via docker-compose instead.
+.env
+
+# Certificate files are mounted as a volume at runtime, not baked into the image.
+# Baking certs into an image would be a security risk — anyone who pulls the image
+# would have your private keys.
+certs/
+
+# No need to copy documentation into the container
+*.md
+README*
+
+# Git history is not needed inside the container
+.git/
+.gitignore

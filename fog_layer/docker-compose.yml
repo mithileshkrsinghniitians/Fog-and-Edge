@@ -1,0 +1,114 @@
+# docker-compose.yml
+#
+# Runs the complete Smart Energy Grid fog layer as three services:
+#
+#   mosquitto       — MQTT broker (official Eclipse image, no build needed)
+#   fog-node        — fog processing node (pulled from Docker Hub)
+#   sensor-manager  — 15 simulated sensors (pulled from Docker Hub)
+#
+# Usage:
+#   docker-compose up           # start all three, see logs in terminal
+#   docker-compose up -d        # start in background (detached)
+#   docker-compose down         # stop and remove containers
+#   docker-compose logs -f      # tail logs from all services
+#
+# To run on any machine (EC2, Windows Server, etc.) you only need:
+#   - This docker-compose.yml file
+#   - A .env file with AWS credentials
+#   - The certs/ folder with AWS IoT TLS certificates
+#
+# Docker pulls the images automatically from Docker Hub on first run.
+
+services:
+
+  # ── Service 1: MQTT Broker ─────────────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: smart_grid_mosquitto
+    restart: unless-stopped
+
+    ports:
+      - "1883:1883"   # MQTT — sensors and fog node connect here
+      - "9001:9001"   # WebSocket — for browser-based MQTT clients
+
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+    networks:
+      - smart_grid_net
+
+  # ── Service 2: Fog Node ────────────────────────────────────────────────────
+  fog-node:
+    image: mithileshsingh/smart-energy-fog-node:latest
+    container_name: smart_grid_fog_node
+    restart: unless-stopped
+
+    depends_on:
+      - mosquitto
+
+    environment:
+      # Inside Docker, containers reach each other by service name.
+      # "mosquitto" resolves to the broker container on the shared network.
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+
+      # AWS credentials are read from the .env file at the project root.
+      # docker-compose loads .env automatically — no need to hardcode values.
+      - AWS_IOT_ENDPOINT=${AWS_IOT_ENDPOINT}
+      - AWS_IOT_CERT_PATH=${AWS_IOT_CERT_PATH}
+      - AWS_IOT_KEY_PATH=${AWS_IOT_KEY_PATH}
+      - AWS_IOT_CA_PATH=${AWS_IOT_CA_PATH}
+      - AWS_REGION=${AWS_REGION}
+      - FOG_NODE_ID=${FOG_NODE_ID:-fog_node_docker_01}
+
+    volumes:
+      # Mount the certs folder so TLS certificates are available inside
+      # the container at the path the code expects.
+      - ../certs:/app/certs:ro
+
+    networks:
+      - smart_grid_net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Service 3: Sensor Manager ──────────────────────────────────────────────
+  sensor-manager:
+    image: mithileshsingh/smart-energy-sensor-manager:latest
+    container_name: smart_grid_sensors
+    restart: unless-stopped
+
+    depends_on:
+      - mosquitto
+
+    environment:
+      # Sensors publish to the Mosquitto broker inside Docker.
+      # Using the service name "mosquitto", not "localhost".
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+
+    networks:
+      - smart_grid_net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ── Shared network ─────────────────────────────────────────────────────────────
+# All three services must be on the same bridge network so they can reach
+# each other by service name (mosquitto, fog-node, sensor-manager).
+networks:
+  smart_grid_net:
+    driver: bridge
+
+# ── Persistent volumes ─────────────────────────────────────────────────────────
+volumes:
+  mosquitto_data:
+  mosquitto_log:

@@ -1,0 +1,20 @@
+# .dockerignore — Sensor Layer
+# Excludes files that don't belong inside the sensor container.
+
+# Python cache — regenerated automatically
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Secrets — never bake into an image
+.env
+certs/
+
+# Documentation — not needed inside the container
+*.md
+README*
+
+# Git history
+.git/
+.gitignore

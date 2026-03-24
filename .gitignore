@@ -1,0 +1,71 @@
+# =============================================================
+# Smart Energy Grid — .gitignore
+# =============================================================
+
+# -------------------------------------------------------------
+# SECRETS — never commit these
+# -------------------------------------------------------------
+
+# Environment variables (AWS credentials, IoT endpoint)
+.env
+
+# AWS IoT TLS certificates (private keys must never be in git)
+certs/
+
+# -------------------------------------------------------------
+# Python
+# -------------------------------------------------------------
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Compiled bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# pytest cache
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# -------------------------------------------------------------
+# IDE — IntelliJ IDEA / PyCharm
+# -------------------------------------------------------------
+
+.idea/
+*.iml
+
+# -------------------------------------------------------------
+# macOS
+# -------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# -------------------------------------------------------------
+# Docker
+# -------------------------------------------------------------
+
+# Local Docker volume data (created by docker-compose, not source code)
+mosquitto_data/
+mosquitto_log/
+
+# -------------------------------------------------------------
+# Logs
+# -------------------------------------------------------------
+
+*.log
+logs/
