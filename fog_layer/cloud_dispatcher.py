@@ -97,7 +97,7 @@ class CloudDispatcher:
 
         if not self.endpoint:
             print("[DISPATCH] AWS_IOT_ENDPOINT is not set in your .env file.")
-            print("[DISPATCH] Add: AWS_IOT_ENDPOINT=your-endpoint.iot.eu-west-1.amazonaws.com")
+            print("[DISPATCH] Add: AWS_IOT_ENDPOINT=your-endpoint.iot.us-east-1.amazonaws.com")
 
         if not self.certs_available:
             print("[DISPATCH] Missing certificate files:")
