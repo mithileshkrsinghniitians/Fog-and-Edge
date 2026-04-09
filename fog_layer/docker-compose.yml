@@ -21,7 +21,7 @@
 
 services:
 
-  # ── Service 1: MQTT Broker ─────────────────────────────────────────────────
+  # Service 1: MQTT Broker:
   mosquitto:
     image: eclipse-mosquitto:2.0
     container_name: smart_grid_mosquitto
@@ -39,9 +39,9 @@ services:
     networks:
       - smart_grid_net
 
-  # ── Service 2: Fog Node ────────────────────────────────────────────────────
+  # Service 2: Fog Node:
   fog-node:
-    image: mithileshsingh/smart-energy-fog-node:latest
+    image: mithileshkrsinghniitians/smart-energy-fog-node:latest
     container_name: smart_grid_fog_node
     restart: unless-stopped
 
@@ -49,22 +49,20 @@ services:
       - mosquitto
 
     environment:
-      # Inside Docker, containers reach each other by service name.
-      # "mosquitto" resolves to the broker container on the shared network.
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
 
       # AWS credentials are read from the .env file at the project root.
       # docker-compose loads .env automatically — no need to hardcode values.
       - AWS_IOT_ENDPOINT=${AWS_IOT_ENDPOINT}
-      - AWS_IOT_CERT_PATH=${AWS_IOT_CERT_PATH}
-      - AWS_IOT_KEY_PATH=${AWS_IOT_KEY_PATH}
-      - AWS_IOT_CA_PATH=${AWS_IOT_CA_PATH}
+      - AWS_IOT_CERT_PATH=/app/certs/device-certificate.pem.crt
+      - AWS_IOT_KEY_PATH=/app/certs/private.pem.key
+      - AWS_IOT_CA_PATH=/app/certs/AmazonRootCA1.pem
       - AWS_REGION=${AWS_REGION}
       - FOG_NODE_ID=${FOG_NODE_ID:-fog_node_docker_01}
 
     volumes:
-      # Mount the certs folder so TLS certificates are available inside
+      # Mount the certs folder so TLS certificates are available inside.
       # the container at the path the code expects.
       - ../certs:/app/certs:ro
 
@@ -77,9 +75,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ── Service 3: Sensor Manager ──────────────────────────────────────────────
+  # Service 3: Sensor Manager:
   sensor-manager:
-    image: mithileshsingh/smart-energy-sensor-manager:latest
+    image: mithileshkrsinghniitians/smart-energy-sensor-manager:latest
     container_name: smart_grid_sensors
     restart: unless-stopped
 
@@ -101,14 +99,14 @@ services:
         max-size: "10m"
         max-file: "3"
 
-# ── Shared network ─────────────────────────────────────────────────────────────
-# All three services must be on the same bridge network so they can reach
+# Shared network:
+# All three services must be on the same bridge network so they can reach.
 # each other by service name (mosquitto, fog-node, sensor-manager).
 networks:
   smart_grid_net:
     driver: bridge
 
-# ── Persistent volumes ─────────────────────────────────────────────────────────
+# Persistent volumes:
 volumes:
   mosquitto_data:
   mosquitto_log:
