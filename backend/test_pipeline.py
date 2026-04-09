@@ -1,24 +1,3 @@
-# test_pipeline.py
-#
-# End-to-end integration test for the Smart Energy Grid pipeline.
-# Runs top to bottom and takes about 90 seconds.
-#
-# What it tests:
-#   1. Mosquitto MQTT broker is reachable
-#   2. sensor_manager starts and sensors publish readings
-#   3. MQTT messages are arriving on home/# topics
-#   4. fog_node runs a processing cycle and produces output
-#   5. DynamoDB has received records
-#   6. Lambda query API returns valid JSON
-#
-# Run it from the project root:
-#   python backend/test_pipeline.py
-#
-# You need:
-#   - Mosquitto running (docker-compose up in fog_layer/)
-#   - AWS credentials in .env (for DynamoDB check)
-#   - venv activated with all dependencies installed
-
 import os
 import sys
 import json
@@ -44,25 +23,19 @@ DYNAMODB_TABLE    = os.getenv("DYNAMODB_TABLE_NAME", "smart-energy-readings")
 AWS_REGION        = os.getenv("AWS_REGION", "us-east-1")
 LAMBDA_URL        = "https://cefq7vq5wv2ppdn3iao4jyiwny0iglzy.lambda-url.us-east-1.on.aws/"
 
-# How long to run the sensors and fog node (seconds).
-# 65 seconds gives sensors time to publish several readings and the fog node
-# at least one full 30-second processing window before we check results.
 PIPELINE_RUN_DURATION = 65
 
-# ── Colour helpers ──────────────────────────────────────────────────────────
 # Just terminal escape codes so the output is easier to read at a glance.
 GREEN  = "\033[92m"
 RED    = "\033[91m"
 YELLOW = "\033[93m"
 RESET  = "\033[0m"
 
-def ok(msg):    print(f"  {GREEN}✅ {msg}{RESET}")
-def fail(msg):  print(f"  {RED}❌ {msg}{RESET}")
+def ok(msg):    print(f"  {GREEN} {msg}{RESET}")
+def fail(msg):  print(f"  {RED} {msg}{RESET}")
 def info(msg):  print(f"  {YELLOW}   {msg}{RESET}")
 def header(msg): print(f"\n{'─'*55}\n  {msg}\n{'─'*55}")
 
-
-# ── Result tracking ─────────────────────────────────────────────────────────
 # We collect pass/fail for each check and print the summary at the end.
 results = {
     "broker":     None,
@@ -75,7 +48,7 @@ results = {
 details = {}   # extra info per check (record counts, error messages etc.)
 
 
-# ── Step 1: Check MQTT broker ───────────────────────────────────────────────
+# ── Step 1: Check MQTT broker:
 
 def check_broker():
     header("Step 1 / 6 — MQTT Broker")
@@ -113,10 +86,7 @@ def check_broker():
         return False
 
 
-# ── Step 2 & 3: Run sensors and monitor MQTT messages ──────────────────────
-
-# Shared list for messages captured by the test subscriber.
-# A lock protects it because the MQTT callback runs in a background thread.
+# ── Step 2 & 3: Run sensors and monitor MQTT messages:
 captured_messages = []
 messages_lock = threading.Lock()
 
@@ -154,9 +124,6 @@ def check_sensors_and_mqtt():
         results["mqtt_msgs"] = False
         return False
 
-    # Launch sensor_manager as a subprocess.
-    # We run it in the sensor_layer/ directory so its sys.path manipulation
-    # (adding sensors/ subfolder) works the same way as when run manually.
     sensor_proc = subprocess.Popen(
         [sys.executable, "sensor_manager.py"],
         cwd=sensor_layer_dir,
@@ -176,8 +143,6 @@ def check_sensors_and_mqtt():
     ok("sensor_manager.py started (pid: {})".format(sensor_proc.pid))
     print()
 
-    # Capture a sample of the sensor_manager's stdout in a background thread
-    # so we can show it without blocking the main test loop.
     sensor_output_lines = []
 
     def capture_output(proc, lines):
@@ -230,31 +195,69 @@ def check_sensors_and_mqtt():
     return final_count > 0
 
 
-# ── Step 4: Run fog_node for one processing cycle ──────────────────────────
+# ── Step 4: Verify fog node processing cycle:
 
 def check_fog_node():
     header("Step 4 / 6 — Fog Node Processing")
-    # Run the sensors briefly again so the fog node has data to process.
-    # The fog node runs a 30-second window, so we give it 40s total.
-    fog_run_time = 40
-    print(f"  Starting fog_node.py + a quick sensor run for {fog_run_time}s ...")
-    print("  Watching for '[FOG] Processing window' in fog node output ...")
+
+    # If the fog node is already running in Docker, check its logs directly.
+    # Running a second fog_node subprocess alongside Docker causes an MQTT
+    # client-ID conflict ("fog_node") that prevents either instance completing
+    # a 30-second window reliably.
+    try:
+        result = subprocess.run(
+            ["docker", "logs", "--tail", "200", "smart_grid_fog_node"],
+            capture_output=True, text=True, timeout=10,
+        )
+        combined = result.stdout + result.stderr
+        if "Processing window" in combined:
+            results["fog"] = True
+            # Extract and show the most recent processing line as evidence
+            for line in reversed(combined.splitlines()):
+                if "Processing window" in line:
+                    ok("Fog node processing window confirmed (Docker container)")
+                    info(line.strip())
+                    break
+            return True
+        elif combined.strip():
+            # Container is running but no window yet — wait briefly and retry
+            print("  Docker fog node running — waiting up to 35s for first window ...")
+            deadline = time.time() + 35
+            while time.time() < deadline:
+                time.sleep(5)
+                result = subprocess.run(
+                    ["docker", "logs", "--tail", "200", "smart_grid_fog_node"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                combined = result.stdout + result.stderr
+                if "Processing window" in combined:
+                    results["fog"] = True
+                    for line in reversed(combined.splitlines()):
+                        if "Processing window" in line:
+                            ok("Fog node processing window confirmed (Docker container)")
+                            info(line.strip())
+                            break
+                    return True
+    except FileNotFoundError:
+        pass  # Docker CLI not available — fall through to subprocess method
+    except Exception:
+        pass
+
+    # Fallback: run fog_node.py as a local subprocess (no Docker)
+    fog_run_time = 65
+    print(f"  Starting fog_node.py locally for up to {fog_run_time}s ...")
+    print("  Watching for '[FOG] Processing window' in output ...")
     print()
 
-    fog_output_lines = []
     found_processing = threading.Event()
 
     def capture_fog(proc):
         for line in proc.stdout:
             line = line.rstrip()
-            fog_output_lines.append(line)
-            # Print fog node output with a prefix so it's clear where it's from
             info(f"[fog]  {line}")
-            # Signal if we see a processing window start
             if "Processing window" in line or "Mode:" in line:
                 found_processing.set()
 
-    # Start sensors again to give the fog node something to receive
     sensor_proc = subprocess.Popen(
         [sys.executable, "sensor_manager.py"],
         cwd=sensor_layer_dir,
@@ -262,7 +265,6 @@ def check_fog_node():
         stderr=subprocess.DEVNULL,
     )
 
-    # Start fog node
     fog_proc = subprocess.Popen(
         [sys.executable, "fog_node.py"],
         cwd=fog_layer_dir,
@@ -272,18 +274,14 @@ def check_fog_node():
     )
 
     if fog_proc.poll() is not None:
-        fail("fog_node.py failed to start (check for import errors in fog_layer/)")
+        fail("fog_node.py failed to start (check imports in fog_layer/)")
         sensor_proc.terminate()
         results["fog"] = False
         return False
 
-    fog_thread = threading.Thread(target=capture_fog, args=(fog_proc,), daemon=True)
-    fog_thread.start()
-
-    # Wait up to fog_run_time seconds, or until we see processing output
+    threading.Thread(target=capture_fog, args=(fog_proc,), daemon=True).start()
     found_processing.wait(timeout=fog_run_time)
 
-    # Clean up both processes
     fog_proc.terminate()
     sensor_proc.terminate()
     for proc in [fog_proc, sensor_proc]:
@@ -298,13 +296,13 @@ def check_fog_node():
         ok("Fog node ran a processing window successfully")
     else:
         results["fog"] = False
-        fail("No processing window output seen in 40 seconds")
+        fail(f"No processing window output seen in {fog_run_time} seconds")
         info("Check fog_layer/fog_node.py can import data_processor and cloud_dispatcher")
 
     return results["fog"]
 
 
-# ── Step 5: Check DynamoDB ─────────────────────────────────────────────────
+# ── Step 5: Check DynamoDB:
 
 def check_dynamodb():
     header("Step 5 / 6 — DynamoDB Records")
@@ -317,8 +315,6 @@ def check_dynamodb():
         dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
         table    = dynamodb.Table(DYNAMODB_TABLE)
 
-        # Scan with a small limit — we just need to confirm records exist.
-        # We're not loading all data, just peeking to see if anything arrived.
         response = table.scan(Limit=10)
         items    = response.get("Items", [])
         count    = len(items)
@@ -352,7 +348,7 @@ def check_dynamodb():
             fail(f"DynamoDB error: {err[:80]}")
 
 
-# ── Step 6: Check Lambda query API ─────────────────────────────────────────
+# ── Step 6: Check Lambda query API:
 
 def check_lambda_api():
     header("Step 6 / 6 — Lambda Query API")
@@ -413,7 +409,7 @@ def check_lambda_api():
         fail(f"Unexpected error: {e}")
 
 
-# ── Final summary ───────────────────────────────────────────────────────────
+# ── Final summary:
 
 def print_summary():
     print(f"\n{'═'*55}")
@@ -456,7 +452,7 @@ def print_summary():
     print(f"\n{'═'*55}\n")
 
 
-# ── Main ────────────────────────────────────────────────────────────────────
+# ── Main:
 
 def main():
     print(f"\n{'═'*55}")

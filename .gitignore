@@ -75,3 +75,4 @@ mosquitto_log/
 
 *.log
 logs/
+.ec2_instance
