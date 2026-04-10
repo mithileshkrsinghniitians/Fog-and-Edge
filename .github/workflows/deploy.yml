@@ -1,43 +1,24 @@
-# .github/workflows/deploy.yml
-#
-# CI/CD Pipeline — Smart Energy Grid
-# Fog & Edge Computing (H9FECC) | NCI MSc Cloud Computing
-#
+# CI/CD Pipeline — Smart Energy Grid - Fog & Edge Computing | NCI MSc Cloud Computing
+
 # Triggers on every push to main branch.
-#
+
 # Job 1 — build-and-push:
-#   Builds fog-node and sensor-manager Docker images
-#   and pushes them to Docker Hub.
-#
+#   Builds fog-node and sensor-manager Docker images and pushes them to Docker Hub.
+
 # Job 2 — deploy:
 #   Copies docker-compose.yml and mosquitto.conf to EC2.
-#   Writes the .env file from GitHub secrets (keeps credentials off disk).
 #   Pulls the new images and restarts all containers.
-#
-# Required GitHub Secrets (Settings > Secrets > Actions):
-#   DOCKERHUB_USERNAME    Docker Hub username
-#   DOCKERHUB_TOKEN       Docker Hub access token (not password)
-#   EC2_HOST              EC2 public IP or DNS hostname
-#   EC2_USER              EC2 login user (ubuntu for Ubuntu AMI)
-#   EC2_SSH_KEY           Contents of the EC2 private key (.pem file)
-#   AWS_IOT_ENDPOINT      IoT Core endpoint (from AWS Console > IoT > Settings)
-#
-# Certs (one-time manual step, NOT in GitHub secrets):
-#   Run scripts/copy_secrets.sh once after provisioning EC2.
-#   Certificates do not need to be re-copied on every deploy.
 
 name: Build, Push & Deploy to EC2
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:     # allow manual run from GitHub Actions UI
+  workflow_dispatch:
 
 jobs:
 
-  # ─────────────────────────────────────────────────────────────
-  # JOB 1: Build Docker images and push to Docker Hub
-  # ─────────────────────────────────────────────────────────────
+  # JOB 1: Build Docker images and push to Docker Hub:
   build-and-push:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
@@ -55,7 +36,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Build fog-node from project root (Dockerfile is in fog_layer/)
+      # Build fog-node from project root:
       - name: Build and push fog-node image
         uses: docker/build-push-action@v5
         with:
@@ -68,7 +49,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Build sensor-manager from project root (Dockerfile is in sensor_layer/)
+      # Build sensor-manager from project root:
       - name: Build and push sensor-manager image
         uses: docker/build-push-action@v5
         with:
@@ -81,10 +62,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ─────────────────────────────────────────────────────────────
-  # JOB 2: Deploy to EC2
-  # Waits for build-and-push to succeed before running.
-  # ─────────────────────────────────────────────────────────────
+
+  # JOB 2: Deploy to EC2. Waits for build-and-push to succeed before running:
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
@@ -94,8 +73,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Copy docker-compose.yml and mosquitto.conf to EC2.
-      # These are not sensitive — safe to copy from the repo.
+      # Copy docker-compose.yml and mosquitto.conf to EC2:
       - name: Copy compose files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -106,9 +84,9 @@ jobs:
           target: "~/smart-energy-grid"
 
       # SSH in to:
-      #   1. Write .env from GitHub secrets (no plaintext credentials on disk)
-      #   2. Pull latest images from Docker Hub
-      #   3. Restart all containers
+      #   1. Write .env from GitHub secrets.
+      #   2. Pull latest images from Docker Hub.
+      #   3. Restart all containers.
       - name: Deploy and restart containers
         uses: appleboy/ssh-action@v1.0.3
         with:
