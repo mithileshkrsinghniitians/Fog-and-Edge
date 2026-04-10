@@ -1,6 +1,5 @@
 # ====================== Task Performed By ingest_handler.py ======================
 #
-#
 # AWS Lambda function — triggered by a Kinesis Data Stream.
 #
 # Overall flow:

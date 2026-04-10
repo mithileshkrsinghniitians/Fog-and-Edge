@@ -1,4 +1,4 @@
-# ====================== Task Performed By ingest_handler.py ======================
+# ====================== Task Performed By query_handler.py ======================
 #
 # AWS Lambda function — serves sensor data as a JSON API for Grafana.
 #
