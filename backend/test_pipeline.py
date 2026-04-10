@@ -9,11 +9,11 @@ import requests
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
-# Load .env from the project root (one level up from backend/)
+# Load .env from the project root:
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(project_root, ".env"))
 
-# Paths to the two layers we'll run as subprocesses
+# Paths to the two layers we'll run as subprocesses:
 sensor_layer_dir = os.path.join(project_root, "sensor_layer")
 fog_layer_dir    = os.path.join(project_root, "fog_layer")
 
@@ -25,7 +25,7 @@ LAMBDA_URL        = "https://cefq7vq5wv2ppdn3iao4jyiwny0iglzy.lambda-url.us-east
 
 PIPELINE_RUN_DURATION = 65
 
-# Just terminal escape codes so the output is easier to read at a glance.
+# Just terminal escape codes so the output is easier to read at a glance:
 GREEN  = "\033[92m"
 RED    = "\033[91m"
 YELLOW = "\033[93m"
@@ -36,7 +36,7 @@ def fail(msg):  print(f"  {RED} {msg}{RESET}")
 def info(msg):  print(f"  {YELLOW}   {msg}{RESET}")
 def header(msg): print(f"\n{'─'*55}\n  {msg}\n{'─'*55}")
 
-# We collect pass/fail for each check and print the summary at the end.
+# We collect pass/fail for each check and print the summary at the end:
 results = {
     "broker":     None,
     "sensors":    None,
@@ -45,11 +45,10 @@ results = {
     "dynamodb":   None,
     "lambda_api": None,
 }
-details = {}   # extra info per check (record counts, error messages etc.)
+details = {}
 
 
-# ── Step 1: Check MQTT broker:
-
+# Step 1: Check MQTT broker:
 def check_broker():
     header("Step 1 / 6 — MQTT Broker")
     print("  Trying to connect to Mosquitto on localhost:1883 ...")
@@ -86,7 +85,7 @@ def check_broker():
         return False
 
 
-# ── Step 2 & 3: Run sensors and monitor MQTT messages:
+# Step 2 & 3: Run sensors and monitor MQTT messages:
 captured_messages = []
 messages_lock = threading.Lock()
 
@@ -97,7 +96,7 @@ def check_sensors_and_mqtt():
     print("  Simultaneously subscribing to home/# to count arriving messages.")
     print()
 
-    # Set up a test MQTT subscriber that just counts incoming messages
+    # Set up a test MQTT subscriber that just counts incoming messages:
     def on_message_capture(client, userdata, msg):
         with messages_lock:
             try:
@@ -109,7 +108,7 @@ def check_sensors_and_mqtt():
                     "value":   payload.get("value"),
                 })
             except Exception:
-                pass  # malformed message — ignore for counting purposes
+                pass
 
     subscriber = mqtt.Client(client_id="pipeline_test_subscriber")
     subscriber.on_message = on_message_capture
@@ -148,7 +147,7 @@ def check_sensors_and_mqtt():
     def capture_output(proc, lines):
         for line in proc.stdout:
             lines.append(line.rstrip())
-            if len(lines) <= 8:            # show first 8 lines as confirmation
+            if len(lines) <= 8:
                 info(f"[sensor] {line.rstrip()}")
 
     output_thread = threading.Thread(
@@ -156,7 +155,7 @@ def check_sensors_and_mqtt():
     )
     output_thread.start()
 
-    # Wait and periodically show how many MQTT messages have arrived
+    # Wait and periodically show how many MQTT messages have arrived:
     print(f"\n  Waiting {PIPELINE_RUN_DURATION}s for sensors to publish readings ...")
     check_points = [10, 20, 35, 50, PIPELINE_RUN_DURATION]
 
@@ -167,7 +166,7 @@ def check_sensors_and_mqtt():
                 count = len(captured_messages)
             print(f"  t={elapsed:>2}s — {count} MQTT messages received so far")
 
-    # Shut down the sensor manager cleanly
+    # Shut down the sensor manager cleanly:
     sensor_proc.terminate()
     try:
         sensor_proc.wait(timeout=5)
@@ -195,15 +194,10 @@ def check_sensors_and_mqtt():
     return final_count > 0
 
 
-# ── Step 4: Verify fog node processing cycle:
-
+# Step 4: Verify fog node processing cycle:
 def check_fog_node():
     header("Step 4 / 6 — Fog Node Processing")
 
-    # If the fog node is already running in Docker, check its logs directly.
-    # Running a second fog_node subprocess alongside Docker causes an MQTT
-    # client-ID conflict ("fog_node") that prevents either instance completing
-    # a 30-second window reliably.
     try:
         result = subprocess.run(
             ["docker", "logs", "--tail", "200", "smart_grid_fog_node"],
@@ -212,7 +206,7 @@ def check_fog_node():
         combined = result.stdout + result.stderr
         if "Processing window" in combined:
             results["fog"] = True
-            # Extract and show the most recent processing line as evidence
+            # Extract and show the most recent processing line as evidence:
             for line in reversed(combined.splitlines()):
                 if "Processing window" in line:
                     ok("Fog node processing window confirmed (Docker container)")
@@ -220,7 +214,7 @@ def check_fog_node():
                     break
             return True
         elif combined.strip():
-            # Container is running but no window yet — wait briefly and retry
+            # Container is running but no window yet — wait briefly and retry:
             print("  Docker fog node running — waiting up to 35s for first window ...")
             deadline = time.time() + 35
             while time.time() < deadline:
@@ -239,11 +233,11 @@ def check_fog_node():
                             break
                     return True
     except FileNotFoundError:
-        pass  # Docker CLI not available — fall through to subprocess method
+        pass
     except Exception:
         pass
 
-    # Fallback: run fog_node.py as a local subprocess (no Docker)
+    # Fallback: run fog_node.py as a local subprocess (no Docker):
     fog_run_time = 65
     print(f"  Starting fog_node.py locally for up to {fog_run_time}s ...")
     print("  Watching for '[FOG] Processing window' in output ...")
@@ -302,8 +296,7 @@ def check_fog_node():
     return results["fog"]
 
 
-# ── Step 5: Check DynamoDB:
-
+# Step 5: Check DynamoDB:
 def check_dynamodb():
     header("Step 5 / 6 — DynamoDB Records")
     print(f"  Checking table '{DYNAMODB_TABLE}' in region {AWS_REGION} ...")
@@ -323,7 +316,6 @@ def check_dynamodb():
         if count > 0:
             results["dynamodb"] = True
             ok(f"{count} record(s) found in DynamoDB")
-            # Show the most recent home_id and energy_mode as a sanity check
             sample = items[-1]
             info(f"Latest: home={sample.get('home_id')} | mode={sample.get('energy_mode')} | {sample.get('timestamp', '')[:19]}")
         else:
@@ -348,8 +340,7 @@ def check_dynamodb():
             fail(f"DynamoDB error: {err[:80]}")
 
 
-# ── Step 6: Check Lambda query API:
-
+# Step 6: Check Lambda query API:
 def check_lambda_api():
     header("Step 6 / 6 — Lambda Query API")
     print(f"  Calling: GET {LAMBDA_URL}?hours=1")
@@ -409,8 +400,7 @@ def check_lambda_api():
         fail(f"Unexpected error: {e}")
 
 
-# ── Final summary:
-
+# Final summary:
 def print_summary():
     print(f"\n{'═'*55}")
     print("  PIPELINE TEST SUMMARY")
@@ -452,8 +442,7 @@ def print_summary():
     print(f"\n{'═'*55}\n")
 
 
-# ── Main:
-
+# Main:
 def main():
     print(f"\n{'═'*55}")
     print("  Smart Energy Grid — End-to-End Pipeline Test")
@@ -464,7 +453,7 @@ def main():
     print(f"  DynamoDB:     {DYNAMODB_TABLE} ({AWS_REGION})")
     print(f"  Lambda URL:   {LAMBDA_URL}")
 
-    # Step 1: broker must be up before anything else makes sense
+    # Step 1: broker must be up before anything else makes sense:
     broker_ok = check_broker()
     if not broker_ok:
         fail("Broker is not reachable — stopping test here.")
@@ -472,19 +461,19 @@ def main():
         print_summary()
         sys.exit(1)
 
-    # Steps 2 & 3: sensors + MQTT message capture (runs for PIPELINE_RUN_DURATION seconds)
+    # Steps 2 & 3: sensors + MQTT message capture (runs for PIPELINE_RUN_DURATION seconds):
     check_sensors_and_mqtt()
 
-    # Step 4: fog node processing
+    # Step 4: fog node processing:
     check_fog_node()
 
-    # Step 5: DynamoDB check
+    # Step 5: DynamoDB check:
     check_dynamodb()
 
-    # Step 6: Lambda query API
+    # Step 6: Lambda query API:
     check_lambda_api()
 
-    # Print the final summary table
+    # Print the final summary table:
     print_summary()
 
 

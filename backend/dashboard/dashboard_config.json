@@ -65,9 +65,9 @@
         "label": "Lambda Function URL",
         "description": "Paste your query_handler Lambda Function URL here (from AWS Console → Lambda → Function URL)",
         "current": {
-          "value": "https://your-lambda-id.lambda-url.eu-west-1.on.aws"
+          "value": "https://cefq7vq5wv2ppdn3iao4jyiwny0iglzy.lambda-url.us-east-1.on.aws/"
         },
-        "query": "https://your-lambda-id.lambda-url.eu-west-1.on.aws",
+        "query": "https://cefq7vq5wv2ppdn3iao4jyiwny0iglzy.lambda-url.us-east-1.on.aws/",
         "hide": 0,
         "skipUrlSync": false
       },
