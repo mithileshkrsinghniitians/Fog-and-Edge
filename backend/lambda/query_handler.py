@@ -1,4 +1,4 @@
-# query_handler.py
+# ====================== Task Performed By ingest_handler.py ======================
 #
 # AWS Lambda function — serves sensor data as a JSON API for Grafana.
 #
@@ -18,6 +18,7 @@
 #   permissions to write to DynamoDB. The query function only needs read permissions.
 #   If Grafana gets compromised, it can't write or delete data. Also, you can scale
 #   them independently — reads and writes have different traffic patterns.
+# ======================================== END ========================================
 
 import json
 import os
@@ -28,24 +29,19 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
-
 DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE_NAME", "smart-energy-readings")
 
-# Known home IDs — comma-separated in env var so it's easy to add homes later.
-# e.g. HOME_IDS=home_1,home_2,home_3
+# Known home IDs — comma-separated in env var so it's easy to add homes later. e.g. HOME_IDS=home_1,home_2,home_3:
 HOME_IDS = [h.strip() for h in os.environ.get("HOME_IDS", "home_1,home_2,home_3").split(",")]
 
-# Max hours a caller can request — prevent someone asking for 10 years of data
+# Max hours a caller can request — prevent someone asking for 10 years of data:
 MAX_HOURS = 24
 
 dynamodb = boto3.resource("dynamodb")
 table    = dynamodb.Table(DYNAMODB_TABLE)
 
 
-# ── Response helpers ──────────────────────────────────────────────────────────
-
-# CORS headers are needed because Grafana runs in a browser and makes cross-origin
-# requests to this Lambda URL. Without these headers the browser blocks the response.
+# Response helpers - CORS headers are needed because Grafana runs in a browser and makes cross-origin requests to this Lambda URL. Without these headers the browser blocks the response:
 CORS_HEADERS = {
     "Content-Type":                 "application/json",
     "Access-Control-Allow-Origin":  "*",
@@ -55,8 +51,6 @@ CORS_HEADERS = {
 
 
 def make_response(status_code, body):
-    # Helper to build a properly formatted Lambda Function URL response.
-    # statusCode, headers, and body are all required by the Lambda URL spec.
     return {
         "statusCode": status_code,
         "headers":    CORS_HEADERS,
@@ -65,18 +59,12 @@ def make_response(status_code, body):
 
 
 def _json_serialiser(obj):
-    # boto3 returns DynamoDB numbers as Decimal, which json.dumps can't handle by default.
-    # This custom serialiser converts Decimal to float before encoding.
-    # We pass it as the 'default' argument to json.dumps so it's only called for
-    # types that json doesn't know how to serialise on its own.
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError(f"Object of type {type(obj)} is not JSON serialisable")
 
 
 def format_item(item):
-    # Convert a raw DynamoDB item into a clean dict for the API response.
-    # Only include fields Grafana actually needs — strip internal stuff like ttl.
     return {
         "timestamp":          item.get("timestamp"),
         "home_id":            item.get("home_id"),
@@ -91,35 +79,22 @@ def format_item(item):
     }
 
 
-# ── DynamoDB query helpers ────────────────────────────────────────────────────
-
+# DynamoDB query helpers:
 def query_home_range(home_id, from_ts_str):
-    # Query DynamoDB for all readings from a specific home within the time range.
-    #
-    # DynamoDB query() uses the partition key (home_id) to go straight to
-    # the right slice of the table, then filters on the sort key (timestamp).
-    # Because our timestamps are ISO 8601 strings, lexicographic comparison
-    # gives us the correct chronological order — "2024-01" < "2024-02" etc.
-    #
-    # ScanIndexForward=True means results come back oldest-first, which is
-    # what Grafana expects for time-series data.
     items = []
 
-    # handle_readings() to handle pagination — DynamoDB returns max 1MB per call.
-    # LastEvaluatedKey being present means there are more pages to fetch.
     kwargs = {
         "KeyConditionExpression": (
             Key("home_id").eq(home_id) &
             Key("timestamp").gte(from_ts_str)
         ),
-        "ScanIndexForward": True,  # oldest first
+        "ScanIndexForward": True,
     }
 
     while True:
         response = table.query(**kwargs)
         items.extend(response.get("Items", []))
 
-        # If LastEvaluatedKey is in the response, there are more pages
         last_key = response.get("LastEvaluatedKey")
         if not last_key:
             break
@@ -129,9 +104,6 @@ def query_home_range(home_id, from_ts_str):
 
 
 def query_home_latest(home_id):
-    # Get just the most recent reading for a home.
-    # ScanIndexForward=False reverses the sort order so the newest item comes first.
-    # Limit=1 means we only fetch one item — no point loading more if we just want current state.
     response = table.query(
         KeyConditionExpression=Key("home_id").eq(home_id),
         ScanIndexForward=False,
@@ -141,16 +113,8 @@ def query_home_latest(home_id):
     return items[0] if items else None
 
 
-# ── Route handlers ────────────────────────────────────────────────────────────
-
+# Route handlers:
 def handle_readings(params):
-    # Main data endpoint — returns time-series readings for one or all homes.
-    #
-    # Query params:
-    #   home_id  (optional) — if omitted, returns data for all homes
-    #   hours    (optional, default 1) — how many hours back to look
-
-    # Parse 'hours' param — validate it's a sensible number
     try:
         hours = int(params.get("hours", 1))
         if hours < 1 or hours > MAX_HOURS:
@@ -160,13 +124,10 @@ def handle_readings(params):
     except ValueError:
         return make_response(400, {"error": "'hours' must be an integer."})
 
-    # Calculate the start of the query window as an ISO string.
-    # DynamoDB timestamp comparison is lexicographic so the format must be consistent —
-    # both stored timestamps and this query timestamp use the same isoformat() output.
     from_dt     = datetime.now(timezone.utc) - timedelta(hours=hours)
     from_ts_str = from_dt.isoformat()
 
-    # Decide which homes to query
+    # Decide which homes to query:
     requested_home = params.get("home_id")
     if requested_home:
         if requested_home not in HOME_IDS:
@@ -177,13 +138,13 @@ def handle_readings(params):
     else:
         homes_to_query = HOME_IDS  # query all homes
 
-    # Run the queries and collect results
+    # Run the queries and collect results:
     all_readings = []
     for home_id in homes_to_query:
         items = query_home_range(home_id, from_ts_str)
         all_readings.extend([format_item(item) for item in items])
 
-    # Sort everything by timestamp — needed when combining multiple homes
+    # Sort everything by timestamp — needed when combining multiple homes:
     all_readings.sort(key=lambda r: r["timestamp"])
 
     return make_response(200, {
@@ -199,10 +160,6 @@ def handle_readings(params):
 
 
 def handle_summary(params):
-    # Summary endpoint — returns only the latest reading for each home.
-    # Grafana stat panels use this: "what is the battery level RIGHT NOW?".
-    # Much cheaper than fetching an hour of history just to show the latest value.
-
     summary = []
     for home_id in HOME_IDS:
         item = query_home_latest(home_id)
@@ -216,13 +173,8 @@ def handle_summary(params):
     })
 
 
-# ── Main handler ──────────────────────────────────────────────────────────────
-
+# Main handler:
 def handler(event, context):
-    # Entry point — Lambda calls this for every HTTP request to the Function URL.
-
-    # Extract request method and path from the event.
-    # Lambda Function URL puts these inside requestContext.http.
     http_context = event.get("requestContext", {}).get("http", {})
     method       = http_context.get("method", "GET").upper()
     path         = http_context.get("path", "/")
@@ -230,8 +182,6 @@ def handler(event, context):
 
     print(f"[QUERY] {method} {path} | params: {params}")
 
-    # Handle CORS preflight — browsers send OPTIONS before cross-origin requests.
-    # We just confirm we accept the request method and headers, return 200.
     if method == "OPTIONS":
         return make_response(200, {})
 
@@ -242,7 +192,6 @@ def handler(event, context):
         if path == "/summary":
             return handle_summary(params)
         else:
-            # Treat any other path (including /) as the readings endpoint
             return handle_readings(params)
 
     except ClientError as e:

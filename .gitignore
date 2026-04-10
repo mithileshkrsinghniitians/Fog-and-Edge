@@ -1,78 +1,57 @@
-# =============================================================
-# Smart Energy Grid — .gitignore
-# =============================================================
+# Smart Energy Grid — .gitignore:
+# ===============================
 
-# -------------------------------------------------------------
-# SECRETS — never commit these
-# -------------------------------------------------------------
-
-# Environment variables (AWS credentials, IoT endpoint)
+# Environment variables:
 .env
 
-# AWS IoT TLS certificates (private keys must never be in git)
+# AWS IoT TLS certificates:
 certs/
 
-# Infrastructure provisioning script (contains no secrets but is local-only)
+# Safety net — catch any stray cert/key files outside certs/:
+*.pem
+*.key
+*.crt
+
+# Infrastructure provisioning script:
 backend/infra/deploy.sh
 
-# Lambda deployment ZIPs (built locally, not source code)
+# Lambda deployment ZIPs:
 backend/lambda/*.zip
 
-# -------------------------------------------------------------
-# Python
-# -------------------------------------------------------------
-
-# Virtual environments
+# Virtual environments:
 .venv/
 venv/
 env/
+.env.example
 
-# Compiled bytecode
+# Compiled bytecode:
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.pyw
-
-# Distribution / packaging
 *.egg-info/
 dist/
 build/
 .eggs/
 
-# pytest cache
+# pytest cache:
 .pytest_cache/
-
-# mypy
 .mypy_cache/
 
-# -------------------------------------------------------------
-# IDE — IntelliJ IDEA / PyCharm
-# -------------------------------------------------------------
-
+# IDE — IntelliJ IDEA:
 .idea/
 *.iml
-
-# -------------------------------------------------------------
-# macOS
-# -------------------------------------------------------------
-
+.claude/
 .DS_Store
 .AppleDouble
 .LSOverride
 
-# -------------------------------------------------------------
-# Docker
-# -------------------------------------------------------------
-
-# Local Docker volume data (created by docker-compose, not source code)
+# Docker volume data:
 mosquitto_data/
 mosquitto_log/
 
-# -------------------------------------------------------------
 # Logs
-# -------------------------------------------------------------
-
 *.log
 logs/
 .ec2_instance
