@@ -1,5 +1,6 @@
 #!/bin/bash
-# scripts/build_and_push.sh
+
+# ====================== Task Performed By build_and_push.sh ======================
 #
 # Builds both Docker images from the project root and pushes them to Docker Hub.
 # Run this locally when you want to push images manually (without GitHub Actions).
@@ -14,6 +15,7 @@
 #
 # You must be logged in to Docker Hub:
 #   docker login
+# ======================================== END ========================================
 
 set -e
 
@@ -27,19 +29,19 @@ echo "  Docker Hub: $DOCKERHUB_USERNAME"
 echo "============================================="
 echo ""
 
-# ── Verify Docker is running ────────────────────────────────────
+# Verify Docker is running:
 if ! docker info &>/dev/null; then
     echo "ERROR: Docker is not running. Start Docker Desktop first."
     exit 1
 fi
 
-# ── Verify logged in to Docker Hub ──────────────────────────────
+# Verify logged in to Docker Hub:
 if ! docker system info | grep -q "Username"; then
     echo "Not logged in to Docker Hub. Running docker login..."
     docker login
 fi
 
-# ── Build fog-node ───────────────────────────────────────────────
+# Build fog-node:
 echo "[1/4] Building fog-node image..."
 echo "      Context: . (project root)"
 echo "      Dockerfile: fog_layer/Dockerfile"
@@ -54,7 +56,7 @@ docker build \
 echo ""
 echo "      fog-node image built."
 
-# ── Build sensor-manager ─────────────────────────────────────────
+# Build sensor-manager:
 echo ""
 echo "[2/4] Building sensor-manager image..."
 echo "      Context: . (project root)"
@@ -70,13 +72,13 @@ docker build \
 echo ""
 echo "      sensor-manager image built."
 
-# ── Push fog-node ────────────────────────────────────────────────
+# Push fog-node:
 echo ""
 echo "[3/4] Pushing fog-node to Docker Hub..."
 docker push "$FOG_IMAGE:latest"
 echo "      Pushed: $FOG_IMAGE:latest"
 
-# ── Push sensor-manager ──────────────────────────────────────────
+# Push sensor-manager:
 echo ""
 echo "[4/4] Pushing sensor-manager to Docker Hub..."
 docker push "$SENSOR_IMAGE:latest"

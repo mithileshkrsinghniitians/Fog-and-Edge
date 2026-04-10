@@ -1,4 +1,4 @@
-# base_sensor.py
+# ========== base_sensor.py ==========
 # This is the abstract base class that all my sensor classes will inherit from.
 # The idea is to keep the common stuff (connecting to MQTT, building the payload,
 # publishing) in one place so I don't repeat it in every sensor file.
@@ -22,12 +22,10 @@ class BaseSensor(ABC):
         self.unit = unit
         self.dispatch_rate = dispatch_rate  # how often to send a reading, in seconds
 
-        # Build the MQTT topic this sensor will publish to.
-        # e.g. home/home_1/solar_panel
+        # Build the MQTT topic this sensor will publish to. e.g. home/home_1/solar_panel:
         self.topic = f"home/{self.home_id}/{self.sensor_type}"
 
-        # Set up the MQTT client and connect to the broker.
-        # The broker address comes from .env so it's easy to change.
+        # Set up the MQTT client and connect to the broker. The broker address comes from .env so it's easy to change:
         broker_host = os.getenv("MQTT_BROKER_HOST", "localhost")
         broker_port = int(os.getenv("MQTT_BROKER_PORT", 1883))
 
@@ -38,12 +36,11 @@ class BaseSensor(ABC):
         print(f"[{self.home_id}] [{self.sensor_type}] Connecting to MQTT broker at {broker_host}:{broker_port}")
         self.client.connect(broker_host, broker_port, keepalive=60)
 
-        # loop_start() runs the MQTT network loop in a background thread.
-        # This way the main loop can just focus on reading and publishing.
+        # loop_start() runs the MQTT network loop in a background thread. This way the main loop can just focus on reading and publishing:
         self.client.loop_start()
 
     def _on_connect(self, client, userdata, flags, rc):
-        # rc = 0 means connected successfully
+        # rc = 0 means connected successfully.
         if rc == 0:
             print(f"[{self.home_id}] [{self.sensor_type}] Connected to MQTT broker.")
         else:
@@ -54,14 +51,11 @@ class BaseSensor(ABC):
 
     @abstractmethod
     def get_reading(self):
-        # Every sensor subclass must implement this.
-        # It should return a single numeric value — the sensor reading.
         pass
 
     def publish(self):
         value = self.get_reading()
 
-        # Round to 2 decimal places — no need for more precision in a home energy system.
         value = round(value, 2)
 
         payload = {
@@ -69,7 +63,6 @@ class BaseSensor(ABC):
             "sensor_type": self.sensor_type,
             "value": value,
             "unit": self.unit,
-            # ISO 8601 timestamp in UTC so it's unambiguous wherever this ends up.
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
@@ -79,7 +72,7 @@ class BaseSensor(ABC):
         print(f"[{self.home_id}] [{self.sensor_type}] Published: {value} {self.unit}")
 
     def run(self):
-        # Keep reading and publishing until the script is killed.
+        # Keep reading and publishing until the script is killed:
         print(f"[{self.home_id}] [{self.sensor_type}] Starting sensor loop (every {self.dispatch_rate}s)...")
         try:
             while True:

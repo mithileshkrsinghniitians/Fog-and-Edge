@@ -1,5 +1,6 @@
 #!/bin/bash
-# scripts/copy_secrets.sh
+
+# ====================== Task Performed By copy_secrets.sh ======================
 #
 # Copies sensitive files (.env and TLS certificates) to the EC2 instance.
 # This is a one-time manual step — run it once after provisioning.
@@ -15,10 +16,11 @@
 # Usage (run from project root):
 #   chmod +x scripts/copy_secrets.sh
 #   ./scripts/copy_secrets.sh
+# ======================================== END ========================================
 
 set -e
 
-# Load instance details if available
+# Load instance details if available:
 if [ -f ".ec2_instance" ]; then
     source .ec2_instance
     HOST="${PUBLIC_IP}"
@@ -41,14 +43,14 @@ echo "  Host: $HOST | User: $USER"
 echo "============================================="
 echo ""
 
-# ── Check .env exists ───────────────────────────────────────────
+# Check .env exists:
 if [ ! -f ".env" ]; then
     echo "ERROR: .env file not found in project root."
     echo "Copy .env.example to .env and fill in your AWS credentials."
     exit 1
 fi
 
-# ── Check certs exist ───────────────────────────────────────────
+# Check certs exist:
 CERT_DIR="certs"
 REQUIRED_CERTS=(
     "AmazonRootCA1.pem"
@@ -68,7 +70,7 @@ done
 
 echo ""
 
-# ── Copy .env to EC2 ────────────────────────────────────────────
+# Copy .env to EC2:
 echo "[1/2] Copying .env to EC2..."
 scp -i "$KEY_FILE" \
     -o StrictHostKeyChecking=no \
@@ -77,7 +79,7 @@ scp -i "$KEY_FILE" \
 
 echo "      .env copied to ~/smart-energy-grid/fog_layer/.env"
 
-# ── Copy certs to EC2 ───────────────────────────────────────────
+# Copy certs to EC2:
 echo ""
 echo "[2/2] Copying TLS certificates to EC2..."
 scp -i "$KEY_FILE" \
@@ -87,7 +89,7 @@ scp -i "$KEY_FILE" \
 
 echo "      certs/ copied to ~/smart-energy-grid/certs/"
 
-# ── Verify on EC2 ───────────────────────────────────────────────
+# Verify on EC2:
 echo ""
 echo "Verifying files on EC2..."
 ssh -i "$KEY_FILE" \

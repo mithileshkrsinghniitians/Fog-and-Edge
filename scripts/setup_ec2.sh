@@ -1,5 +1,6 @@
 #!/bin/bash
-# scripts/setup_ec2.sh
+
+# ====================== Task Performed By setup_ec2.sh ======================
 #
 # First-time EC2 instance setup for the Smart Energy Grid.
 # Run this from your LOCAL machine after provisioning EC2.
@@ -13,10 +14,11 @@
 # set these environment variables manually:
 #   EC2_HOST=<public-ip>
 #   KEY_FILE=~/.ssh/smart-energy-grid.pem
+# ======================================== END ========================================
 
 set -e
 
-# Load instance details if available
+# Load instance details if available:
 if [ -f ".ec2_instance" ]; then
     source .ec2_instance
     HOST="${PUBLIC_IP}"

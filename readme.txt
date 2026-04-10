@@ -1,29 +1,21 @@
 Smart Energy Grid — IoT Monitoring System
 ==========================================
-Fog & Edge Computing (H9FECC) — NCI MSc Cloud Computing
-Student: Mithilesh Singh | Due: 17 April 2026
+Fog & Edge Computing — NCI MSc Cloud Computing
 
 This project simulates a smart energy grid across 3 homes.
-15 sensors generate energy data (solar, grid, battery, EV, temperature),
-a fog node processes it locally, and the cloud (AWS) stores and
-visualises the data via a Grafana Cloud dashboard.
+15 sensors generate energy data (solar, grid, battery, EV, temperature), a fog node processes it locally, and the cloud (AWS) stores and visualizes the data via a Grafana Cloud dashboard.
 
-There are three ways to run this application. Choose the method
-that fits your setup.
+There are three ways to run this application. Choose the method that fits your setup:
 
-==============================================================
-METHOD 1 — RUN FROM IDE (source code already open)
-==============================================================
-
-Use this if you already have the project open in IntelliJ IDEA
-or any other IDE.
+METHOD 1 — RUN FROM IDE (source code already open):
+===================================================
+Use this if you already have the project open in IntelliJ IDEA or any other IDE.
 
 Prerequisites:
   - Python 3.11+
   - Docker Desktop running
 
--- Step 1: Set up Python environment --
-
+=> Step 1: Set up Python environment:
 Open a terminal in the IDE at the project root:
 
   python3 -m venv .venv
@@ -31,16 +23,14 @@ Open a terminal in the IDE at the project root:
   .venv\Scripts\activate             (Windows)
   pip install -r requirements.txt
 
--- Step 2: Configure IntelliJ Python Interpreter --
-
+=> Step 2: Configure IntelliJ Python Interpreter:
   File > Settings > Project > Python Interpreter
   > Add Interpreter > Add Local Interpreter
   > Virtualenv Environment > Existing
   > Select: <project_root>/.venv/bin/python
   > OK
 
--- Step 3: Set up environment variables --
-
+=> Step 3: Set up environment variables:
   cp .env.example .env
 
   Open .env and fill in:
@@ -53,16 +43,14 @@ Open a terminal in the IDE at the project root:
     MQTT_BROKER_HOST  — localhost
     MQTT_BROKER_PORT  — 1883
 
--- Step 4: Start MQTT broker (Terminal 1) --
-
+=> Step 4: Start MQTT broker (Terminal 1):
   cd fog_layer
   docker-compose up -d mosquitto
   cd ..
 
   Expected: Container smart_grid_mosquitto  Running
 
--- Step 5: Start fog node (Terminal 2) --
-
+=> Step 5: Start fog node (Terminal 2):
   source .venv/bin/activate
   python fog_layer/fog_node.py
 
@@ -70,8 +58,7 @@ Open a terminal in the IDE at the project root:
     [FOG] Connected to MQTT broker.
     [FOG] Subscribed to topic: home/#
 
--- Step 6: Start sensors (Terminal 3) --
-
+=> Step 6: Start sensors (Terminal 3):
   source .venv/bin/activate
   python sensor_layer/sensor_manager.py
 
@@ -79,15 +66,14 @@ Open a terminal in the IDE at the project root:
     MQTT broker is reachable. Good to go.
     All 15 sensor threads running.
 
-After ~30 seconds the fog node processes its first window:
+After 30 seconds the fog node processes its first window:
   [FOG] Processing window at HH:MM:SS (75 readings)
   [FOG] Home-1 | Mode: SOLAR_SURPLUS
   [DISPATCH] Sent payload for Home-1 | 14.3p/kWh
 
-==============================================================
-METHOD 2 — CLONE FROM GITHUB AND RUN IN IDE
-==============================================================
 
+METHOD 2 — CLONE FROM GITHUB AND RUN IN IDE:
+============================================
 Use this to set up the project fresh on a new machine.
 
 Prerequisites:
@@ -96,17 +82,14 @@ Prerequisites:
   - Docker Desktop
   - IntelliJ IDEA (or any IDE with Python support)
 
--- Step 1: Clone the repository --
-
-  git clone https://github.com/mithileshsingh/smart-energy-grid.git
+=> Step 1: Clone the repository:
+  git clone https://github.com/mithileshkrsinghniitians/Fog-and-Edge.git
   cd "Smart Energy Grid"
 
--- Step 2: Open in IntelliJ IDEA --
-
+=> Step 2: Open in IntelliJ IDEA:
   File > Open > select the "Smart Energy Grid" folder > OK
 
--- Step 3: Set up Python environment --
-
+=> Step 3: Set up Python environment:
   Open the built-in terminal in IntelliJ (View > Tool Windows > Terminal):
 
   python3 -m venv .venv
@@ -114,8 +97,7 @@ Prerequisites:
   .venv\Scripts\activate             (Windows)
   pip install -r requirements.txt
 
--- Step 4: Configure Python interpreter in IntelliJ --
-
+=> Step 4: Configure Python interpreter in IntelliJ:
   File > Settings > Project > Python Interpreter
   > Add Interpreter > Add Local Interpreter
   > Virtualenv Environment > Existing
@@ -123,15 +105,13 @@ Prerequisites:
             <project_root>/.venv\Scripts\python.exe  (Windows)
   > OK
 
--- Step 5: Configure environment variables --
-
+=> Step 5: Configure environment variables:
   cp .env.example .env
 
   Open .env in the IDE and fill in all values.
   (See ENVIRONMENT VARIABLES section at the bottom of this file.)
 
--- Step 6: Add TLS certificates --
-
+=> Step 6: Add TLS certificates:
   Place AWS IoT certificate files in the certs/ folder:
     certs/AmazonRootCA1.pem
     certs/device-certificate.pem.crt
@@ -141,8 +121,7 @@ Prerequisites:
   when creating a Thing, or use the certificates provided with
   this project.
 
--- Step 7: Start the application (3 terminals) --
-
+=> Step 7: Start the application (3 terminals):
   Terminal 1 — MQTT broker:
     cd fog_layer
     docker-compose up -d mosquitto
@@ -156,23 +135,18 @@ Prerequisites:
     source .venv/bin/activate
     python sensor_layer/sensor_manager.py
 
-The full pipeline is now running. Open Grafana Cloud to see the
-live dashboard.
+The full pipeline is now running. Open Grafana Cloud to see the live dashboard.
 
-==============================================================
-METHOD 3 — RUN VIA DOCKER (no source code needed)
-==============================================================
 
-Use this to run on any machine: EC2, Windows Server, or any
-computer with Docker installed. No Python, no pip, no source
-code required. Docker pulls everything from Docker Hub.
+METHOD 3 — RUN VIA DOCKER:
+==========================
+Use this to run on any machine: EC2, Windows Server, or any computer with Docker installed. No Python, no pip, no source code required. Docker pulls everything from Docker Hub:
 
 Prerequisites:
   - Docker Desktop only
     Download: https://www.docker.com/products/docker-desktop/
 
--- Step 1: Create a folder on the target machine --
-
+=> Step 1: Create a folder on the target machine:
 Create a folder called smart-energy-grid and add these 4 items:
 
   smart-energy-grid/
@@ -188,8 +162,7 @@ Create a folder called smart-energy-grid and add these 4 items:
 Copy .env and certs/ from your development machine.
 Copy docker-compose.yml and mosquitto.conf from fog_layer/.
 
--- Step 2: Run the application --
-
+=> Step 2: Run the application:
   cd smart-energy-grid/fog_layer
   docker-compose up
 
@@ -200,12 +173,10 @@ Docker automatically pulls:
 
 All three services start. The full pipeline runs immediately.
 
--- Step 3: Run in background (optional) --
-
+=> Step 3: Run in background (optional):
   docker-compose up -d
 
--- Useful Docker commands --
-
+=> Useful Docker commands:
   docker-compose logs -f              View logs from all services
   docker-compose logs -f fog-node     Fog node logs only
   docker-compose logs -f sensor-manager  Sensor logs only
@@ -213,7 +184,6 @@ All three services start. The full pipeline runs immediately.
   docker-compose down                 Stop everything
 
 -- Expected output --
-
   smart_grid_mosquitto  | Starting Mosquitto MQTT broker
   smart_grid_fog_node   | [FOG] Connected to MQTT broker.
   smart_grid_fog_node   | [FOG] Subscribed to topic: home/#
@@ -223,16 +193,14 @@ All three services start. The full pipeline runs immediately.
   smart_grid_fog_node   | [FOG] Home-1 | Mode: SOLAR_SURPLUS
   smart_grid_fog_node   | [DISPATCH] Sent payload for Home-1
 
-==============================================================
-END-TO-END TEST
-==============================================================
 
+END-TO-END TEST:
+================
 With Mosquitto running and AWS credentials configured in .env:
-
   source .venv/bin/activate
   python backend/test_pipeline.py
 
-Runs for ~90 seconds and checks 6 steps:
+Runs for 90 seconds and checks 6 steps:
   MQTT broker reachable
   Sensor manager started
   MQTT messages arriving  (195 received)
@@ -240,38 +208,33 @@ Runs for ~90 seconds and checks 6 steps:
   DynamoDB records found  (6 records)
   Lambda query API working (6 readings returned)
 
-==============================================================
-VERIFY CLOUD BACKEND (no local setup needed)
-==============================================================
 
+VERIFY CLOUD BACKEND:
+=====================
 The AWS backend is live. Verify it with a single curl command:
 
   curl "https://cefq7vq5wv2ppdn3iao4jyiwny0iglzy.lambda-url.us-east-1.on.aws/?hours=1"
 
 A successful response returns JSON with sensor readings from DynamoDB.
 
-==============================================================
-DASHBOARD
-==============================================================
 
-The dashboard runs on Grafana Cloud (free tier).
-Full setup guide: backend/dashboard/grafana_setup.md
+DASHBOARD:
+==========
+The dashboard runs on Grafana Cloud (free tier). Full setup guide: backend/dashboard/grafana_setup.md
 Dashboard JSON:   backend/dashboard/dashboard_config.json
 
 Quick steps:
   1. Sign up at https://grafana.com
-  2. Install Infinity datasource plugin (Yesoreyeram)
+  2. Install Infinity datasource plugin
   3. Point datasource at your Lambda query Function URL
   4. Import backend/dashboard/dashboard_config.json
   5. Set auto-refresh to 30 seconds
 
-5 panels: Solar Output | Grid Consumption | Battery Level |
-          EV Charger | Temperature
+5 panels: Solar Output | Grid Consumption | Battery Level | EV Charger | Temperature
 
-==============================================================
-ENVIRONMENT VARIABLES
-==============================================================
 
+ENVIRONMENT VARIABLES:
+======================
 Copy .env.example to .env and fill in these values:
 
   MQTT_BROKER_HOST      MQTT broker address       (default: localhost)
@@ -282,15 +245,3 @@ Copy .env.example to .env and fill in these values:
   AWS_IOT_CA_PATH       Path to Amazon Root CA
   AWS_REGION            AWS region                (us-east-1)
   DYNAMODB_TABLE_NAME   DynamoDB table name       (smart-energy-readings)
-
-==============================================================
-NOTES
-==============================================================
-
-  - Python version used during development: 3.11
-  - All AWS resources are in us-east-1
-  - Never commit .env or certs/ to version control
-  - The fog node runs in local-only mode if AWS credentials are
-    missing — it still processes and logs data locally
-  - For full Docker setup guide: fog_layer/docker_run_instructions.md
-  - For MQTT broker details: fog_layer/README_mqtt.md

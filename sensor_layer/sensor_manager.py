@@ -1,4 +1,4 @@
-# sensor_manager.py
+# ========== sensor_manager.py ==========
 # This is the main entry point for the entire sensor layer.
 # Its job is to read the config, spin up one instance of each sensor type
 # per home, and start them all running at the same time using threads.
@@ -19,9 +19,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Path setup ---
-# The sensor classes live in sensor_layer/sensors/, but sensor_manager.py is in
-# sensor_layer/. Python won't find them unless we add that subfolder to the path.
+# Path setup:
 sensors_dir = os.path.join(os.path.dirname(__file__), "sensors")
 sys.path.insert(0, sensors_dir)
 
@@ -32,8 +30,7 @@ from ev_sensor import EVSensor
 from thermostat_sensor import ThermostatSensor
 
 
-# --- Load config ---
-# config.json sits in the same folder as this file (sensor_layer/)
+# Load config:
 config_path = os.path.join(os.path.dirname(__file__), "config.json")
 
 with open(config_path, "r") as f:
@@ -44,9 +41,6 @@ homes = [home["home_id"] for home in config["homes"]]
 
 
 def check_broker_connection(host, port):
-    # Before starting all 15 sensors, do a quick check that the MQTT broker
-    # is actually reachable. Better to fail fast here with a clear message
-    # than have 15 threads all fail silently in the background.
     print(f"\nChecking MQTT broker connection at {host}:{port}...")
     test_client = mqtt.Client(client_id="connection_test")
 
@@ -79,13 +73,6 @@ def check_broker_connection(host, port):
 
 
 def create_sensors_for_home(home_id):
-    # Create one of each sensor type for a given home.
-    # Each sensor manages its own MQTT client connection internally.
-    #
-    # Why does each sensor have its own MQTT client instead of sharing one?
-    # Because paho-mqtt clients aren't designed to be shared across threads —
-    # if two threads tried to publish at the same time on the same client
-    # you'd get race conditions. One client per sensor = no shared state.
     sensors = [
         SolarSensor(home_id=home_id, dispatch_rate=dispatch_rate),
         GridSensor(home_id=home_id, dispatch_rate=dispatch_rate),
@@ -97,10 +84,6 @@ def create_sensors_for_home(home_id):
 
 
 def start_sensor_thread(sensor):
-    # Each sensor's run() method loops forever, so it needs to be in its own thread.
-    # daemon=True means the thread will be killed automatically when the main thread exits.
-    # Without daemon=True, hitting Ctrl+C wouldn't actually stop the program —
-    # the threads would keep going in the background.
     thread = threading.Thread(target=sensor.run, daemon=True)
     thread.start()
     return thread
@@ -110,7 +93,7 @@ def main():
     broker_host = os.getenv("MQTT_BROKER_HOST", "localhost")
     broker_port = int(os.getenv("MQTT_BROKER_PORT", 1883))
 
-    # Step 1: verify the broker is up before we try to connect 15 sensors to it
+    # Step 1: verify the broker is up before we try to connect 15 sensors to it:
     if not check_broker_connection(broker_host, broker_port):
         sys.exit(1)
 
@@ -125,7 +108,7 @@ def main():
     print("=" * 55)
     print()
 
-    # Step 2: create and start all sensors
+    # Step 2: create and start all sensors:
     all_threads = []
 
     for home_id in homes:
@@ -142,9 +125,7 @@ def main():
     total = len(all_threads)
     print(f"All {total} sensor threads running. Press Ctrl+C to stop.\n")
 
-    # Step 3: keep the main thread alive
-    # The child threads are all daemons, so they'll die if the main thread exits.
-    # We need to keep the main thread running — the simplest way is just to loop.
+    # Step 3: keep the main thread alive:
     try:
         while True:
             time.sleep(1)
@@ -152,7 +133,7 @@ def main():
         print("\n\nStopping sensor manager...")
         print(f"All {total} sensor threads will shut down now.")
         print("Goodbye.")
-        # Daemon threads are killed automatically when we exit here
+        # Daemon threads are killed automatically when we exit here:
 
 
 if __name__ == "__main__":
