@@ -55,3 +55,6 @@ mosquitto_log/
 *.log
 logs/
 .ec2_instance
+
+# Source Code
+Fog-and-Edge-Source-Code.zip
