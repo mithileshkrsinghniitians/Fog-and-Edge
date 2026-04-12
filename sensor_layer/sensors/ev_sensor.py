@@ -25,14 +25,14 @@ class EVSensor(BaseSensor):
         self.charging_rate = 7.4  # kW — standard 7.4kW single-phase home charger
 
         # Session tracking — is the car currently plugged in and charging:
-        self.is_charging = True  # Tweak EV Charging to "True" -> [Actual value "False"]
-        self.session_end_time = datetime.now() + timedelta(hours=999)  # Tweak with Session to "datetime.now() + timedelta(hours=999)" -> [Actual value "None"]
+        self.is_charging = False  # Tweak EV Charging to "True" -> [Actual value "False"]
+        self.session_end_time = None  # Tweak with Session to "datetime.now() + timedelta(hours=999)" -> [Actual value "None"]
 
     def _try_start_session(self, hour):
         # The car might arrive home between 5pm and 8pm.
         # Each time we check (every dispatch_rate seconds), there's a 3% chance
         # the car arrives if it's within the arrival window and we're not already charging.
-        if 17 <= hour <= 20:
+        if 17 <= hour <= 20: # Tweak for EV charging actual value [if 17 <= hour <= 20:]
             if random.random() < 0.03:  # 3% probability per cycle
                 # Car just arrived — start a new charging session.
                 # Session lasts between 2 and 8 hours (depends on how low the battery was).
