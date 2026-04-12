@@ -25,8 +25,8 @@ class EVSensor(BaseSensor):
         self.charging_rate = 7.4  # kW — standard 7.4kW single-phase home charger
 
         # Session tracking — is the car currently plugged in and charging:
-        self.is_charging = False
-        self.session_end_time = None  # when the current session will finish.
+        self.is_charging = True  # Tweak EV Charging to "True" -> [Actual value "False"]
+        self.session_end_time = datetime.now() + timedelta(hours=999)  # Tweak with Session to "datetime.now() + timedelta(hours=999)" -> [Actual value "None"]
 
     def _try_start_session(self, hour):
         # The car might arrive home between 5pm and 8pm.
